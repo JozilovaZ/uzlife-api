@@ -11,6 +11,10 @@ class Currency(models.Model):
     name = models.CharField('Nomi', max_length=100)
     symbol = models.CharField('Belgi', max_length=8, blank=True, help_text='$, €, ₽')
     flag_emoji = models.CharField('Bayroq (emoji)', max_length=8, blank=True)
+    image = models.ImageField(
+        'Rasm', upload_to='currency/', blank=True, null=True,
+        help_text='Valyuta uchun rasm (masalan, oltin tanga).',
+    )
     is_active = models.BooleanField('Faol', default=True)
     is_featured = models.BooleanField(
         'Bosh sahifada', default=False,

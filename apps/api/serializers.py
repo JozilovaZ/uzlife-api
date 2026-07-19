@@ -141,7 +141,7 @@ class CurrencySerializer(serializers.ModelSerializer):
     class Meta:
         model = Currency
         fields = (
-            'id', 'code', 'name', 'symbol', 'flag_emoji',
+            'id', 'code', 'name', 'symbol', 'flag_emoji', 'image',
             'is_active', 'is_featured', 'order', 'latest_rate',
         )
 
