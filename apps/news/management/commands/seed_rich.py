@@ -250,10 +250,17 @@ SUMMARY_TPL = (
 
 
 def _font(size):
+    import os.path
+    import PIL
+    pil_fonts = os.path.join(os.path.dirname(PIL.__file__), 'fonts')
     for path in (
         'C:/Windows/Fonts/arialbd.ttf',
         'C:/Windows/Fonts/arial.ttf',
         'C:/Windows/Fonts/segoeui.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        os.path.join(pil_fonts, 'DejaVuSans-Bold.ttf'),
+        os.path.join(pil_fonts, 'DejaVuSans.ttf'),
     ):
         try:
             return ImageFont.truetype(path, size)

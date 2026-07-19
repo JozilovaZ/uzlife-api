@@ -14,7 +14,16 @@ from apps.currency.models import Currency
 
 
 def _font(size):
-    for path in ('C:/Windows/Fonts/arialbd.ttf', 'C:/Windows/Fonts/arial.ttf'):
+    import os.path
+    import PIL
+    pil_fonts = os.path.join(os.path.dirname(PIL.__file__), 'fonts')
+    for path in (
+        'C:/Windows/Fonts/arialbd.ttf',
+        'C:/Windows/Fonts/arial.ttf',
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+        os.path.join(pil_fonts, 'DejaVuSans-Bold.ttf'),
+        os.path.join(pil_fonts, 'DejaVuSans.ttf'),
+    ):
         try:
             return ImageFont.truetype(path, size)
         except OSError:
