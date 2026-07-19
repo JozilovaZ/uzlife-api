@@ -1,0 +1,5 @@
+# Docker/shell skriptlari doim LF bo'lsin (CRLF ularni buzadi)
+*.sh text eol=lf
+entrypoint.sh text eol=lf
+Dockerfile text eol=lf
+nginx/*.conf text eol=lf

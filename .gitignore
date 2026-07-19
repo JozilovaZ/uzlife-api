@@ -1,0 +1,16 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+
+# Django
+db.sqlite3
+/staticfiles/
+/media/
+
+# Muhit
+.env
+
+# IDE
+.vscode/
+.idea/
