@@ -1,6 +1,6 @@
 """UzLife API viewsetlari."""
 from django.utils import translation
-from rest_framework import generics, permissions, viewsets
+from rest_framework import generics, permissions, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -58,6 +58,42 @@ class LanguageMixin:
         if getattr(self, '_req_lang', None) == 'uz-cyrl' and response.data is not None:
             response.data = _translit_data(response.data)
         return response
+
+
+# ---------- Bosh sahifa ----------
+class HomeView(LanguageMixin, views.APIView):
+    """Bosh sahifa uchun yig‘ma ma’lumot: ob-havo + valyuta + yangiliklar.
+
+    Frontend bosh sahifani bitta so‘rov bilan to‘ldiradi. Ob-havo — standart
+    shahar (Toshkent) bo‘yicha bugungi prognoz bilan.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        ctx = {'request': request}
+
+        # Ob-havo: standart (yoki birinchi faol) shahar, bugungi prognoz bilan
+        city = (City.objects.filter(is_active=True, is_default=True).first()
+                or City.objects.filter(is_active=True).first())
+        weather = CitySerializer(city, context=ctx).data if city else None
+
+        # Valyuta: bosh sahifada ko‘rsatiladiganlar (dollar, oltin, ...)
+        currencies = (Currency.objects.filter(is_active=True, is_featured=True)
+                      .prefetch_related('rates').order_by('order', 'id'))
+        currency_data = CurrencySerializer(currencies, many=True, context=ctx).data
+
+        # Yangiliklar: bosh (featured) va so‘nggilar
+        published = Article.objects.filter(
+            status=Article.Status.PUBLISHED).select_related('category', 'author')
+        featured = published.filter(is_featured=True).order_by('-published_at')[:5]
+        latest = published.order_by('-published_at')[:10]
+
+        return Response({
+            'weather': weather,
+            'currencies': currency_data,
+            'featured_news': ArticleListSerializer(featured, many=True, context=ctx).data,
+            'latest_news': ArticleListSerializer(latest, many=True, context=ctx).data,
+        })
 
 
 # ---------- Auth ----------

@@ -12,6 +12,7 @@ router.register('currencies', views.CurrencyViewSet, basename='currency')
 router.register('cities', views.CityViewSet, basename='city')
 
 urlpatterns = [
+    path('home/', views.HomeView.as_view(), name='home'),
     path('auth/register/', views.RegisterView.as_view(), name='register'),
     path('auth/me/', views.MeView.as_view(), name='me'),
     path('', include(router.urls)),
