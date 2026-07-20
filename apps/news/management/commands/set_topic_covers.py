@@ -13,6 +13,7 @@ import io
 import ssl
 import time
 import json
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -50,6 +51,33 @@ COVER_W, COVER_H = 1200, 630
 _ctx = ssl.create_default_context()
 
 
+def _urlopen_retry(url, timeout=25, tries=4):
+    """URL'ni ochadi; 429/5xx/tarmoq xatosida backoff bilan qayta urinadi."""
+    delay = 2.0
+    last = None
+    for attempt in range(tries):
+        try:
+            req = urllib.request.Request(url, headers=UA)
+            return urllib.request.urlopen(req, timeout=timeout, context=_ctx).read()
+        except urllib.error.HTTPError as e:
+            last = e
+            if e.code in (429, 500, 502, 503, 504):
+                # Retry-After bo‘lsa unga amal qilamiz
+                ra = e.headers.get('Retry-After') if e.headers else None
+                wait = float(ra) if (ra and ra.isdigit()) else delay
+                time.sleep(min(wait, 30))
+                delay *= 2
+                continue
+            raise
+        except Exception as e:  # noqa: BLE001 — DNS/timeout va h.k.
+            last = e
+            time.sleep(delay)
+            delay *= 2
+    if last:
+        raise last
+    raise RuntimeError('urlopen: noma’lum xato')
+
+
 def _fetch_candidates(query, limit=30):
     """Wikimedia Commons'dan berilgan so‘z bo‘yicha rasm URL ro‘yxatini qaytaradi."""
     qs = urllib.parse.urlencode({
@@ -58,9 +86,7 @@ def _fetch_candidates(query, limit=30):
         'prop': 'imageinfo', 'iiprop': 'url|mime',
         'iiurlwidth': COVER_W, 'format': 'json',
     })
-    req = urllib.request.Request(COMMONS_API + '?' + qs, headers=UA)
-    with urllib.request.urlopen(req, timeout=20, context=_ctx) as r:
-        data = json.load(r)
+    data = json.loads(_urlopen_retry(COMMONS_API + '?' + qs))
     pages = (data.get('query') or {}).get('pages', {})
     urls = []
     for p in pages.values():
@@ -76,9 +102,7 @@ def _fetch_candidates(query, limit=30):
 
 def _download_cover(url):
     """Rasmni yuklab, 1200x630 muqovaga qirqadi. Muvaffaqiyatsizda None."""
-    req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=20, context=_ctx) as r:
-        raw = r.read()
+    raw = _urlopen_retry(url)
     img = Image.open(io.BytesIO(raw)).convert('RGB')
     # Markazdan crop qilib, muqova nisbatiga (1200x630) keltiramiz
     tw, th = COVER_W, COVER_H
@@ -96,7 +120,7 @@ def _download_cover(url):
 
 
 class Command(BaseCommand):
-    help = 'Yangiliklarga mavzuga mos haqiqiy muqova rasmlarini qo‘yadi (Openverse).'
+    help = 'Yangiliklarga mavzuga mos haqiqiy muqova rasmlarini qo‘yadi (Wikimedia Commons).'
 
     def add_arguments(self, parser):
         parser.add_argument('--category', help='Faqat shu kategoriya slug‘i')
@@ -134,7 +158,7 @@ class Command(BaseCommand):
                         if u not in seen:
                             seen.add(u)
                             pool.append(u)
-                    time.sleep(0.5)  # Openverse'ga hurmat
+                    time.sleep(1.0)  # Wikimedia'ni charchatmaslik
                 except Exception as e:
                     self.stdout.write(f'    qidiruv xatosi ({q}): {e}')
                 if len(pool) >= len(articles) + 15:
@@ -161,6 +185,7 @@ class Command(BaseCommand):
                     saved = True
                     total_ok += 1
                     self.stdout.write(f'  + {art.title[:45]}…')
+                    time.sleep(0.3)  # yuklab olishlar orasida kichik pauza
                 if not saved:
                     self.stdout.write(
                         f'  ! rasm topilmadi: {art.title[:45]}…')
