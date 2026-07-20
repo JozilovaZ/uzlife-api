@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from apps.currency.models import Currency, CurrencyRate
-from apps.news.models import Article, Category
+from apps.news.models import Article, ArticleImage, Category
 from apps.weather.models import City, HourlyForecast, WeatherForecast
 
 
@@ -90,14 +90,21 @@ class ArticleListSerializer(serializers.ModelSerializer):
         )
 
 
+class ArticleImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ArticleImage
+        fields = ('id', 'image', 'caption', 'order')
+
+
 class ArticleDetailSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     author = serializers.CharField(source='author.username', read_only=True, default=None)
+    images = ArticleImageSerializer(many=True, read_only=True)
 
     class Meta:
         model = Article
         fields = (
-            'id', 'title', 'slug', 'summary', 'body', 'cover_image',
+            'id', 'title', 'slug', 'summary', 'body', 'cover_image', 'images',
             'category', 'author', 'status', 'is_featured', 'views_count',
             'published_at', 'created_at', 'updated_at',
         )

@@ -1,8 +1,7 @@
-"""Demo yangiliklarga boy (ko'p abzasli) matn va ichki rasmlar qo'shadi.
+"""Demo yangiliklarga boy (ko'p abzasli, sarlavhali) HTML matn qo'shadi.
 
-Body maydonini HTML sifatida to'ldiradi (detail.html'da `|safe` bilan chiqadi).
-Rasmlar picsum.photos'dan yangilik pk'siga bog'langan seed orqali olinadi —
-har bir yangilik uchun izchil, takrorlanmaydigan tasvir.
+Body maydonini HTML sifatida to'ldiradi (kirish, <h3> bo'limlar, iqtiboslar).
+Rasmlar alohida galereyada saqlanadi — `add_gallery_images` komandasiga qarang.
 """
 import random
 import textwrap
@@ -69,16 +68,6 @@ QUOTE_POOL = [
 ]
 
 
-def img_tag(seed, caption):
-    url = f'https://picsum.photos/seed/uzlife-{seed}/1000/560'
-    return (
-        f'<figure class="article__figure">'
-        f'<img src="{url}" alt="{caption}" loading="lazy">'
-        f'<figcaption>{caption}</figcaption>'
-        f'</figure>'
-    )
-
-
 class Command(BaseCommand):
     help = 'Yangiliklarning body maydoniga boy matn va ichki rasmlar qo‘shadi.'
 
@@ -96,19 +85,20 @@ class Command(BaseCommand):
             cat = art.category.name
             intro = INTRO.get(cat, DEFAULT_INTRO)
 
-            paras = rnd.sample(BODY_POOL, k=4)
-            quote = rnd.choice(QUOTE_POOL)
+            paras = rnd.sample(BODY_POOL, k=6)
+            quotes = rnd.sample(QUOTE_POOL, k=2)
 
             parts = [f'<p><strong>{art.title}.</strong> {intro}</p>']
             parts.append(f'<p>{paras[0]}</p>')
             parts.append(f'<p>{paras[1]}</p>')
-            # birinchi ichki rasm
-            parts.append(img_tag(f'{art.pk}-a', f'{cat}: mavzuga oid tasvir'))
-            parts.append(f'<blockquote>{quote}</blockquote>')
+            parts.append(f'<blockquote>{quotes[0]}</blockquote>')
+            parts.append('<h3>Tafsilotlar</h3>')
             parts.append(f'<p>{paras[2]}</p>')
-            # ikkinchi ichki rasm
-            parts.append(img_tag(f'{art.pk}-b', f'{art.title}'))
             parts.append(f'<p>{paras[3]}</p>')
+            parts.append('<h3>Kutilayotgan natijalar</h3>')
+            parts.append(f'<p>{paras[4]}</p>')
+            parts.append(f'<blockquote>{quotes[1]}</blockquote>')
+            parts.append(f'<p>{paras[5]}</p>')
 
             art.body = '\n'.join(parts)
 

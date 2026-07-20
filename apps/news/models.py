@@ -78,3 +78,26 @@ class Article(models.Model):
     @property
     def is_published(self):
         return self.status == self.Status.PUBLISHED
+
+
+class ArticleImage(models.Model):
+    """Yangilik galereyasi — muqovadan tashqari qo‘shimcha rasmlar.
+
+    Detal sahifada muqova ostida ko‘rsatiladi. Admin paneldan har bir
+    yangilikka qo‘lda ham qo‘shish mumkin (inline).
+    """
+    article = models.ForeignKey(
+        Article, on_delete=models.CASCADE,
+        related_name='images', verbose_name='Yangilik',
+    )
+    image = models.ImageField('Rasm', upload_to='news/gallery/%Y/%m/')
+    caption = models.CharField('Izoh', max_length=250, blank=True)
+    order = models.PositiveIntegerField('Tartib', default=0)
+
+    class Meta:
+        verbose_name = 'Yangilik rasmi'
+        verbose_name_plural = 'Yangilik rasmlari (galereya)'
+        ordering = ['order', 'id']
+
+    def __str__(self):
+        return f'{self.article.title[:40]} — rasm #{self.pk}'

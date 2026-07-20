@@ -1,7 +1,24 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Article, Category
+from .models import Article, ArticleImage, Category
+
+
+class ArticleImageInline(admin.TabularInline):
+    """Yangilik detalida qo‘shimcha rasmlarni shu yerdan qo‘shish mumkin."""
+    model = ArticleImage
+    extra = 1
+    fields = ('image', 'thumb', 'caption', 'order')
+    readonly_fields = ('thumb',)
+
+    @admin.display(description='Ko‘rinishi')
+    def thumb(self, obj):
+        if obj.image:
+            return format_html(
+                '<img src="{}" style="max-height:90px;border-radius:6px;">',
+                obj.image.url,
+            )
+        return '—'
 
 
 @admin.register(Category)
@@ -33,6 +50,7 @@ class ArticleAdmin(admin.ModelAdmin):
     readonly_fields = ('views_count', 'created_at', 'updated_at', 'cover_preview')
     list_per_page = 30
     actions = ('make_published', 'make_draft', 'make_featured')
+    inlines = (ArticleImageInline,)
 
     fieldsets = (
         ('Asosiy', {

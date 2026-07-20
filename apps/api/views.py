@@ -148,6 +148,8 @@ class ArticleViewSet(LanguageMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Article.objects.select_related('category', 'author')
+        if self.action == 'retrieve':
+            qs = qs.prefetch_related('images')
         # Ro‘yxat/detalda faqat e’lon qilinganlar; yozuv amallarida hammasi
         if self.action in ('list', 'retrieve'):
             qs = qs.filter(status=Article.Status.PUBLISHED)
