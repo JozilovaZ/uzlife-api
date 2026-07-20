@@ -32,6 +32,7 @@ SEED_CITIES = [
     ('Navoiy', 'navoiy', 40.0844, 65.3792, False, 11),
     ('Guliston', 'guliston', 40.4897, 68.7842, False, 12),
     ('Termiz', 'termiz', 37.2242, 67.2783, False, 13),
+    ('Nurafshon', 'nurafshon', 41.0333, 69.3500, False, 14),  # Toshkent viloyati
 ]
 
 API_URL = 'https://api.open-meteo.com/v1/forecast'

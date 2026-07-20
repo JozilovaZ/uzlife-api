@@ -201,3 +201,23 @@ class CityViewSet(LanguageMixin, viewsets.ReadOnlyModelViewSet):
         date = request.query_params.get('date') or timezone.localdate()
         data = HourlyForecastSerializer(city.hourly_for(date), many=True).data
         return Response(data)
+
+    @action(detail=False, methods=['get'], url_path='hourly')
+    def hourly_all(self, request):
+        """Barcha viloyatlar bo‘yicha soatlik prognoz (bir kun).
+
+        ?date=YYYY-MM-DD — standart: bugun. Har bir shahar uchun 00:00→23:00
+        soatlar ro‘yxati qaytadi.
+        """
+        from django.utils import timezone
+        date = request.query_params.get('date') or str(timezone.localdate())
+        result = []
+        for city in self.get_queryset().order_by('order', 'name'):
+            hours = HourlyForecastSerializer(city.hourly_for(date), many=True).data
+            result.append({
+                'city': city.name,
+                'slug': city.slug,
+                'date': date,
+                'hourly': hours,
+            })
+        return Response(result)
