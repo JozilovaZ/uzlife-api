@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Article, ArticleImage, Category
+from .models import Article, ArticleImage, Category, Comment
 
 
 class ArticleImageInline(admin.TabularInline):
@@ -96,3 +96,31 @@ class ArticleAdmin(admin.ModelAdmin):
     def make_featured(self, request, queryset):
         updated = queryset.update(is_featured=True)
         self.message_user(request, f'{updated} ta yangilik tanlandi.')
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('display_name', 'article', 'short_body', 'is_approved', 'created_at')
+    list_filter = ('is_approved', 'created_at')
+    list_editable = ('is_approved',)
+    search_fields = ('body', 'author_name', 'author__username', 'article__title')
+    date_hierarchy = 'created_at'
+    ordering = ('-created_at',)
+    autocomplete_fields = ('article', 'author', 'parent')
+    readonly_fields = ('created_at', 'updated_at')
+    list_per_page = 50
+    actions = ('approve', 'reject')
+
+    @admin.display(description='Izoh')
+    def short_body(self, obj):
+        return obj.body[:60] + ('…' if len(obj.body) > 60 else '')
+
+    @admin.action(description='Tanlanganlarni tasdiqlash')
+    def approve(self, request, queryset):
+        updated = queryset.update(is_approved=True)
+        self.message_user(request, f'{updated} ta izoh tasdiqlandi.')
+
+    @admin.action(description='Tanlanganlarni yashirish')
+    def reject(self, request, queryset):
+        updated = queryset.update(is_approved=False)
+        self.message_user(request, f'{updated} ta izoh yashirildi.')

@@ -16,6 +16,7 @@ from .serializers import (
     ArticleListSerializer,
     ArticleWriteSerializer,
     CategorySerializer,
+    CommentSerializer,
     CitySerializer,
     CurrencySerializer,
     HourlyForecastSerializer,
@@ -150,17 +151,44 @@ class ArticleViewSet(LanguageMixin, viewsets.ModelViewSet):
         qs = Article.objects.select_related('category', 'author')
         if self.action == 'retrieve':
             qs = qs.prefetch_related('images')
-        # Ro‘yxat/detalda faqat e’lon qilinganlar; yozuv amallarida hammasi
-        if self.action in ('list', 'retrieve'):
+        # Ro‘yxat/detal/izohlarda faqat e’lon qilinganlar; yozuv amallarida hammasi
+        if self.action in ('list', 'retrieve', 'comments'):
             qs = qs.filter(status=Article.Status.PUBLISHED)
         return qs
 
     def get_serializer_class(self):
+        if self.action == 'comments':
+            return CommentSerializer
         if self.action in ('create', 'update', 'partial_update'):
             return ArticleWriteSerializer
         if self.action == 'retrieve':
             return ArticleDetailSerializer
         return ArticleListSerializer
+
+    @action(detail=True, methods=['get', 'post'],
+            permission_classes=[permissions.AllowAny])
+    def comments(self, request, slug=None):
+        """Yangilik izohlari.
+
+        GET — tasdiqlangan yuqori darajadagi izohlar (javoblari ichida).
+        POST — yangi izoh qoldirish. Kirgan foydalanuvchi uchun ism avtomatik;
+        mehmon `author_name` yuboradi. Javob uchun `parent` (izoh id) beriladi.
+        """
+        article = self.get_object()
+        ctx = self.get_serializer_context()
+        ctx['article'] = article
+
+        if request.method == 'POST':
+            serializer = CommentSerializer(data=request.data, context=ctx)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=201)
+
+        qs = (article.comments
+              .filter(is_approved=True, parent__isnull=True)
+              .select_related('author')
+              .prefetch_related('replies__author'))
+        return Response(CommentSerializer(qs, many=True, context=ctx).data)
 
 
 # ---------- Currency ----------

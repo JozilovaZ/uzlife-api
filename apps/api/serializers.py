@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from apps.currency.models import Currency, CurrencyRate
-from apps.news.models import Article, ArticleImage, Category
+from apps.news.models import Article, ArticleImage, Category, Comment
 from apps.weather.models import City, HourlyForecast, WeatherForecast
 
 
@@ -100,14 +100,18 @@ class ArticleDetailSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     author = serializers.CharField(source='author.username', read_only=True, default=None)
     images = ArticleImageSerializer(many=True, read_only=True)
+    comments_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Article
         fields = (
             'id', 'title', 'slug', 'summary', 'body', 'cover_image', 'images',
             'category', 'author', 'status', 'is_featured', 'views_count',
-            'published_at', 'created_at', 'updated_at',
+            'comments_count', 'published_at', 'created_at', 'updated_at',
         )
+
+    def get_comments_count(self, obj):
+        return obj.comments.filter(is_approved=True).count()
 
 
 class ArticleWriteSerializer(serializers.ModelSerializer):
@@ -129,6 +133,54 @@ class ArticleWriteSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['author'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Yangilik ostidagi izoh.
+
+    O‘qishda `display_name` — muallif ismi (foydalanuvchi yoki mehmon).
+    Yozishda: kirgan foydalanuvchi uchun ism avtomatik; mehmon `author_name`
+    yuboradi. `parent` — javob (reply) uchun ixtiyoriy.
+    """
+    display_name = serializers.CharField(read_only=True)
+    replies = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = (
+            'id', 'article', 'author', 'author_name', 'display_name',
+            'parent', 'body', 'created_at', 'replies',
+        )
+        read_only_fields = ('article', 'author', 'created_at')
+
+    def get_replies(self, obj):
+        # Faqat yuqori darajadagi izohlar ostida tasdiqlangan javoblar
+        if obj.parent_id:
+            return []
+        qs = obj.replies.filter(is_approved=True)
+        return CommentSerializer(qs, many=True, context=self.context).data
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if not (request and request.user.is_authenticated):
+            if not attrs.get('author_name', '').strip():
+                raise serializers.ValidationError(
+                    {'author_name': _('Ism majburiy (yoki tizimga kiring).')})
+        parent = attrs.get('parent')
+        if parent is not None:
+            article = self.context.get('article')
+            if article is not None and parent.article_id != article.id:
+                raise serializers.ValidationError(
+                    {'parent': _('Javob shu yangilikning izohiga tegishli emas.')})
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context['request']
+        validated_data['article'] = self.context['article']
+        if request.user.is_authenticated:
+            validated_data['author'] = request.user
+            validated_data['author_name'] = ''
         return super().create(validated_data)
 
 

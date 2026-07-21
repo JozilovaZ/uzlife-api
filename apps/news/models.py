@@ -101,3 +101,47 @@ class ArticleImage(models.Model):
 
     def __str__(self):
         return f'{self.article.title[:40]} — rasm #{self.pk}'
+
+
+class Comment(models.Model):
+    """Yangilik ostidagi izoh (comment).
+
+    Ro‘yxatdan o‘tgan foydalanuvchi ham, mehmon (ism bilan) ham qoldira oladi.
+    `is_approved` — moderatsiya bayrog‘i; admin paneldan nomaqbul izohni
+    yashirish mumkin. Nested javob (reply) uchun `parent` bo‘lishi mumkin.
+    """
+    article = models.ForeignKey(
+        Article, on_delete=models.CASCADE,
+        related_name='comments', verbose_name='Yangilik',
+    )
+    author = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='comments', verbose_name='Foydalanuvchi',
+    )
+    author_name = models.CharField('Ism (mehmon)', max_length=80, blank=True)
+    parent = models.ForeignKey(
+        'self', on_delete=models.CASCADE,
+        null=True, blank=True, related_name='replies', verbose_name='Javob',
+    )
+    body = models.TextField('Izoh matni', max_length=2000)
+    is_approved = models.BooleanField('Tasdiqlangan', default=True)
+
+    created_at = models.DateTimeField('Yaratilgan', auto_now_add=True)
+    updated_at = models.DateTimeField('Yangilangan', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Izoh'
+        verbose_name_plural = 'Izohlar'
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['article', 'is_approved']),
+        ]
+
+    def __str__(self):
+        return f'{self.display_name}: {self.body[:40]}'
+
+    @property
+    def display_name(self):
+        if self.author_id:
+            return self.author.get_full_name() or self.author.username
+        return self.author_name or 'Mehmon'
