@@ -10,6 +10,7 @@ import random
 import textwrap
 from datetime import timedelta
 
+from django.core.files import File
 from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -317,6 +318,8 @@ class Command(BaseCommand):
             self.stdout.write(f'{n} ta eski maqola o‘chirildi.')
 
         per_category = max(1, opts['count'])
+        from .apply_seed_photos import PREFIX as PHOTO_PREFIX, seed_photo_path
+
         now = timezone.now()
         created = 0
         for order, (cat_name, titles) in enumerate(TITLES.items(), start=1):
@@ -344,10 +347,17 @@ class Command(BaseCommand):
                     published_at=now - timedelta(hours=order * 3 + i),
                 )
                 article.save()
-                fname = f'{category.slug or "news"}-{i + 1}.jpg'
-                article.cover_image.save(
-                    fname, make_cover(title, cat_name, color), save=True,
-                )
+                # Mavzuga mos foto bo‘lsa — o‘sha, bo‘lmasa sarlavhali muqova
+                photo = seed_photo_path(cat_name, i)
+                if photo:
+                    with photo.open('rb') as fh:
+                        article.cover_image.save(
+                            PHOTO_PREFIX + photo.name, File(fh), save=True)
+                else:
+                    fname = f'{category.slug or "news"}-{i + 1}.jpg'
+                    article.cover_image.save(
+                        fname, make_cover(title, cat_name, color), save=True,
+                    )
                 created += 1
                 self.stdout.write(f'  + {cat_name}: {title[:40]}…')
 

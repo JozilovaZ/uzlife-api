@@ -22,13 +22,11 @@ if [ "$(python manage.py shell -c 'from apps.news.models import Article; print(A
     python manage.py seed_rich --count 10 || true
     python manage.py fetch_rates || true
     python manage.py fetch_weather || true
-
-    # Mavzuga mos haqiqiy rasmlar (Wikimedia) — bir necha daqiqa oladi,
-    # shuning uchun fonda: API shu orada ishlay boshlaydi.
-    ( python manage.py set_topic_covers --force \
-        && python manage.py add_gallery_images --count 2 ) \
-        > /tmp/rasmlar.log 2>&1 &
 fi
+
+# Demo yangiliklarga mavzuga mos fotolar (loyiha ichida, internet shart emas).
+# Foto qo'yilganlarini o'tkazib yuboradi — har startda xavfsiz.
+python manage.py apply_seed_photos || true
 
 # Gunicorn (WSGI)
 exec gunicorn config.wsgi:application \
