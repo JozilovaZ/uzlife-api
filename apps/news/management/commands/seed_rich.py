@@ -1,8 +1,9 @@
-"""Har bir kategoriyaga 20 tadan boy matnli, rasmli demo yangilik yaratadi.
+"""Har bir kategoriyaga 10 tadan boy matnli, rasmli demo yangilik yaratadi.
 
 Ishlatish:
-    python manage.py seed_rich          # 20 tadan to‘ldiradi
-    python manage.py seed_rich --flush  # avval eski maqolalarni o‘chiradi
+    python manage.py seed_rich             # 10 tadan to‘ldiradi
+    python manage.py seed_rich --count 20  # 20 tadan (maksimum 20)
+    python manage.py seed_rich --flush     # avval eski maqolalarni o‘chiradi
 """
 import io
 import random
@@ -17,7 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from apps.news.models import Article, Category
 
-PER_CATEGORY = 20
+PER_CATEGORY = 10
 
 # Kategoriya -> (rang, 20 ta sarlavha)
 CAT_COLOR = {
@@ -301,11 +302,13 @@ def make_cover(title, cat_name, color):
 
 
 class Command(BaseCommand):
-    help = 'Har bir kategoriyaga 20 tadan boy matnli, rasmli yangilik yaratadi.'
+    help = 'Har bir kategoriyaga 10 tadan boy matnli, rasmli yangilik yaratadi.'
 
     def add_arguments(self, parser):
         parser.add_argument('--flush', action='store_true',
                             help='Avval barcha maqolalarni o‘chiradi.')
+        parser.add_argument('--count', type=int, default=PER_CATEGORY,
+                            help='Har kategoriyaga nechta maqola (maks. 20).')
 
     def handle(self, *args, **opts):
         if opts['flush']:
@@ -313,6 +316,7 @@ class Command(BaseCommand):
             Article.objects.all().delete()
             self.stdout.write(f'{n} ta eski maqola o‘chirildi.')
 
+        per_category = max(1, opts['count'])
         now = timezone.now()
         created = 0
         for order, (cat_name, titles) in enumerate(TITLES.items(), start=1):
@@ -320,7 +324,7 @@ class Command(BaseCommand):
             category, _ = Category.objects.get_or_create(
                 name=cat_name, defaults={'order': order},
             )
-            for i, title in enumerate(titles[:PER_CATEGORY]):
+            for i, title in enumerate(titles[:per_category]):
                 if Article.objects.filter(title=title).exists():
                     continue
 

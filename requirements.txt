@@ -1,5 +1,6 @@
 asgiref==3.11.1
 Django==5.2.16
+django-cors-headers==4.9.0
 django-filter==26.1
 django-modeltranslation==0.20.3
 djangorestframework==3.17.1

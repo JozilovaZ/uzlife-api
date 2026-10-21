@@ -35,6 +35,17 @@ CSRF_TRUSTED_ORIGINS = [
     o for o in os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '').split(',') if o
 ]
 
+# ---------- CORS (React frontend boshqa domendan so'rov yuboradi) ----------
+# Ochiq read-only API bo'lgani uchun standart holatda hamma domenga ruxsat.
+# Kerak bo'lsa DJANGO_CORS_ALLOWED_ORIGINS bilan cheklash mumkin.
+_cors_origins = [
+    o for o in os.getenv('DJANGO_CORS_ALLOWED_ORIGINS', '').split(',') if o
+]
+if _cors_origins:
+    CORS_ALLOWED_ORIGINS = _cors_origins
+else:
+    CORS_ALLOW_ALL_ORIGINS = True
+
 
 # Application definition
 
@@ -48,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Uchinchi tomon (API)
+    'corsheaders',
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
@@ -63,6 +75,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # CommonMiddleware'dan oldin turishi shart
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',  # API ?lang aniqlash
     'django.middleware.common.CommonMiddleware',
