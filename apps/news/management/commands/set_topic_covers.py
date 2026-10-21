@@ -45,7 +45,77 @@ CATEGORY_QUERIES = {
               'graduation education', 'science laboratory'],
 }
 
-COMMONS_API = 'https://commons.wikimedia.org/w/api.php'
+# Har bir maqola uchun sarlavhaga MOS aniq qidiruv so‘zi (seed_rich TITLES
+# tartibida, har kategoriyaning birinchi 10 tasi). Topilmasa kategoriya
+# umumiy so‘zlariga qaytiladi.
+ARTICLE_QUERY_LIST = {
+    'Siyosat': [
+        'parliament session vote', 'presidents summit meeting',
+        'public hearing town hall', 'state budget parliament',
+        'diplomatic meeting handshake', 'senate chamber',
+        'election ballot box', 'government press conference',
+        'constitution document', 'government cabinet meeting',
+    ],
+    'Iqtisod': [
+        'central bank building', 'small business shop',
+        'container port export', 'business investment office',
+        'currency exchange banknotes', 'supermarket prices',
+        'industrial zone factory', 'contactless payment card',
+        'fruit harvest agriculture', 'contract signing ceremony',
+    ],
+    'Jamiyat': [
+        'Tashkent metro station', 'students using computers',
+        'city bus passengers', 'city park trees',
+        'hospital doctor patient', 'apartment buildings construction',
+        'family with children', 'kindergarten children playing',
+        'drinking water tap', 'street renovation',
+    ],
+    'Dunyo': [
+        'international agreement signing', 'climate summit',
+        'power plant energy', 'oil pump jack', 'humanitarian aid',
+        'cargo ship containers', 'world economic forum', 'rocket launch',
+        'wind turbines Europe', 'freight train railway',
+    ],
+    'Sport': [
+        'football team training', 'football match stadium',
+        'wrestling competition', 'sports arena', 'olympic games athletes',
+        'boxing match', 'sprint race athletics', 'youth football',
+        'tennis match', 'artistic gymnastics',
+    ],
+    'Texnologiya': [
+        'startup coworking', 'cell tower antenna',
+        'artificial intelligence robot', 'laptop online service',
+        'programmers office', 'online shopping parcel delivery',
+        'cyber security', 'programming code screen',
+        'data center servers', 'mobile banking smartphone',
+    ],
+    'Madaniyat': [
+        'film festival red carpet', 'theatre stage performance',
+        'contemporary art exhibition', 'literature award books',
+        'museum exhibits', 'cinema hall', 'Uzbek handicraft',
+        'painter artist painting', 'symphony orchestra concert', 'book fair',
+    ],
+    'Ta’lim': [
+        'school classroom', 'university entrance exam', 'university campus',
+        'new school building', 'teacher training seminar',
+        'exam students writing', 'university campus students',
+        'mathematics olympiad', 'vocational training workshop',
+        'tablet in classroom',
+    ],
+}
+
+
+def _article_queries():
+    """Sarlavha -> qidiruv so‘zi lug‘ati (seed_rich sarlavhalari asosida)."""
+    from .seed_rich import TITLES
+    mapping = {}
+    for cat_name, queries in ARTICLE_QUERY_LIST.items():
+        for title, q in zip(TITLES.get(cat_name, []), queries):
+            mapping[title] = q
+    return mapping
+
+
+COMMONS_API ='https://commons.wikimedia.org/w/api.php'
 UA = {'User-Agent': 'UzLifeNewsBot/1.0 (https://yangilik.uz; davronovtuit0397@gmail.com)'}
 COVER_W, COVER_H = 1200, 630
 _ctx = ssl.create_default_context()
@@ -135,6 +205,8 @@ class Command(BaseCommand):
                 self.stderr.write(f'Kategoriya topilmadi: {opts["category"]}')
                 return
 
+        title_queries = _article_queries()
+        used = set()  # bir rasm ikki maqolaga tushmasin
         total_ok = 0
         for cat in cats:
             queries = CATEGORY_QUERIES.get(cat.slug)
@@ -167,12 +239,25 @@ class Command(BaseCommand):
             self.stdout.write(
                 f'\n{cat.name}: {len(articles)} maqola, {len(pool)} nomzod rasm')
 
-            pi = 0
             for art in articles:
+                # Avval sarlavhaga mos aniq qidiruv, keyin kategoriya umumiy rasmlari
+                candidates = []
+                q = title_queries.get(getattr(art, 'title_uz', None) or art.title)
+                if q:
+                    try:
+                        candidates = _fetch_candidates(q, limit=10)
+                        time.sleep(0.5)
+                    except Exception as e:
+                        self.stdout.write(f'    qidiruv xatosi ({q}): {e}')
+                candidates += pool
+
                 saved = False
-                while pi < len(pool) and not saved:
-                    url = pool[pi]
-                    pi += 1
+                for url in candidates:
+                    if saved:
+                        break
+                    if url in used:
+                        continue
+                    used.add(url)
                     try:
                         buf = _download_cover(url)
                     except Exception:
